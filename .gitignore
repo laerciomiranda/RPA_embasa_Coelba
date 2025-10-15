@@ -1,0 +1,6 @@
+# Ignorar todos os arquivos de log
+*.log
+*.pdf
+# Opcional: ignorar logs dentro de subpastas específicas
+files/Log/
+tmp/
