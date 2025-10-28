@@ -16,7 +16,7 @@ class Embasa:
         self.bianatech = BianatechService()
             
     def iniciar (self):
-        listEmpresas = self.sqlExecute.select("Empresas", "Empresa = 'EMBASA' And Codigo = '03795071001600'")
+        listEmpresas = self.sqlExecute.select("Empresas", "Empresa = 'EMBASA'")
         for item in listEmpresas:
             self.webDirve =  WebDrive()
             self.base = Base(self.webDirve.driver, "EMBASA")
@@ -39,18 +39,16 @@ class Embasa:
         self.base.interacoes.executar_Js("document.body.style.zoom = '0.3'", None)
         self.base.interacoes.esperar_elemento(By.XPATH, "//*[@id='wizard']/div/h2")
         self.escolherCnpj()
-        print(f"escolhendo empresa: {empresa.strip()}")
         for option in self.select.options:
             if option.get_attribute("value").strip() == empresa.strip():
                 option.click()
                 time.sleep(1)
                 self.verificarAviso()
                 break
-        print("Empresa escolhida")
+        
         time.sleep(3)
-        print("Verificando se Empresa Existe!")
         if self.base.interacoes.elemento_existe(By.XPATH, ".//div[contains(text(), 'Não existe matrícula para este')]"):
-            print("Não existe matrícula para este CPF")
+            self.base.log.processo("Embasa",f"       -> Não existe matrícula para este CPF : {empresa}")
             return
         
         self.base.interacoes.clicar_elemento(By.XPATH, "//section/div/ul/div/div[1]/li")
@@ -107,10 +105,8 @@ class Embasa:
                     
                 time.sleep(1)
                 while True:
-                    print("true while")
                     loading = self.base.interacoes.elemento_existe(By.CLASS_NAME, "spinner-border")
                     if loading == False:
-                        print("loading true")
                         time.sleep(2)
                         break
                 
@@ -164,7 +160,6 @@ class Embasa:
                 continue
                   
     def escolherCnpj(self):
-        print("Clicar no botão")
         self.base.interacoes.clicar_elemento(By.CLASS_NAME, "btn-matricula")
         self.base.interacoes.executar_Js_seletor("document.querySelectorAll('.d-none').forEach(el => el.classList.remove('d-none'));")
         time.sleep(3)
