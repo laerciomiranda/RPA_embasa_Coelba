@@ -5,13 +5,15 @@ from src.model.fatura import Fatura
 from src.components.base import Base
 from src.components.webdriver import WebDrive
 from src.repository.sqlExecute import SQL
+from src.services.bianaTech import BianatechService
 
 class Embasa:
     
     def __init__(self):
         self.webDirve = any
         self.base = any
-        self.sqlExecute = SQL("COELBA")
+        self.sqlExecute = SQL("EMBASA")
+        self.bianatech = BianatechService()
             
     def iniciar (self):
         listEmpresas = self.sqlExecute.select("Empresas", "Empresa = 'EMBASA'")
@@ -35,13 +37,20 @@ class Embasa:
         
     def processo(self, listClientes, empresa):
         self.base.interacoes.executar_Js("document.body.style.zoom = '0.3'", None)
+        self.base.interacoes.esperar_elemento(By.XPATH, "//*[@id='wizard']/div/h2")
         self.escolherCnpj()
+        print(f"escolhendo empresa: {empresa.strip()}")
         for option in self.select.options:
             if option.get_attribute("value").strip() == empresa.strip():
                 option.click()
                 time.sleep(1)
                 self.verificarAviso()
                 break
+        print("Empresa escolhida")
+        time.sleep(3)
+        print("Verificando se Empresa Existe!")
+        if self.base.interacoes.elemento_existe(By.XPATH, "//*[@id='js-portlet-_meuUsuario_INSTANCE_qlbt_']/section/div/ul/li/div"):
+            return
         
         self.base.interacoes.clicar_elemento(By.XPATH, "//section/div/ul/div/div[1]/li")
         self.base.interacoes.clicar_elemento(By.XPATH, "//button[contains(text(), 'Selecionar Matrícula')]")
@@ -80,7 +89,7 @@ class Embasa:
                 total           = self.base.interacoes.esperar_elemento_lista(By.XPATH, card,".//div[contains(@class, 'font-weight-bold') and contains(text(), 'R$')]")
                 comptenciaReal = self.base.funcoes.corrigir_mes(referencia.text, list[5])
                 
-                ultimoValSalvo = self.base.faturasRepository.select(f"Embasa-{list[3]}-{referencia.text}-{Venncimento.text}")
+                ultimoValSalvo = self.base.faturasRepository.select(f"Embasa-{list[3]}-{Venncimento.text}")
                 if(ultimoValSalvo == total.text.replace("R$&nbsp;","")):
                     self.base.log.processo("Embasa",f"           {list[3]} - {referencia.text} - {Venncimento.text} - {valor_servico.text} - {total.text} - {status.text}")
                     continue
@@ -111,28 +120,31 @@ class Embasa:
                 
                 textoPdf = self.base.leitorPdf.lerPdf(move)
                 dadosPdf = self.base.leitorPdf.ObterDadosEmbasa(textoPdf)
+                img_base_64 = self.base.file.imagem_para_base64(move)
+                
+                dadosBiana = self.bianatech.consultar(img_base_64, "Mês/Ano|VALOR A PAGAR (R$)|Vencimento|Data Leitura Anterior|Data Leitura Atual|Próxima Leitura|Dias de Consumo|Data Emissão|Consumo (m³)|")
                 fatura = Fatura( 
                         Empresa             = "Embasa", 
                         Cliente             = list[3],
-                        Vencimento          = dadosPdf.Vencimento if dadosPdf.Vencimento is not None else Venncimento.text, 
-                        MesRef              = dadosPdf.MesRef if dadosPdf.MesRef is not None else comptenciaReal, 
-                        MesEmis             = dadosPdf.MesEmis if dadosPdf.MesEmis is not None else None, 
-                        Valor               = dadosPdf.Valor if dadosPdf.Valor is not None else total.text.replace("R$&nbsp;",""), 
-                        Situacao            = self.base.funcoes.comparar_data(dadosPdf.Vencimento) if dadosPdf.Vencimento is not None else status.text, 
+                        Vencimento          = dadosBiana["Vencimento"] if dadosBiana["Vencimento"] != "não informado" else dadosPdf.Vencimento, 
+                        MesRef              = dadosBiana["Mês/Ano"] if dadosBiana["Mês/Ano"] != "não informado" else dadosPdf.MesRef, 
+                        MesEmis             = dadosBiana["Data Emissão"] if dadosBiana["Data Emissão"] != "não informado" else dadosPdf.MesEmis, 
+                        Valor               = dadosBiana["VALOR A PAGAR (R$)"] if dadosBiana["VALOR A PAGAR (R$)"] != "não informado" else dadosPdf.Valor if dadosPdf.Valor is not None else total.text.replace("R$&nbsp;",""), 
+                        Situacao            = self.base.funcoes.comparar_data(dadosBiana["Vencimento"]) if dadosBiana["Vencimento"] != "não informado" else self.base.funcoes.comparar_data(dadosPdf.Vencimento) if dadosPdf.Vencimento is not None else status.text,
                         LeituraAnter        = dadosPdf.LeituraAnt,
                         LeituraAtual        = dadosPdf.LeituraAtu,
                         LeituraProxi        = dadosPdf.leituraPro,
-                        NumDias             = dadosPdf.NumDias,
+                        NumDias             = dadosBiana["Dias de Consumo"] if dadosBiana["Dias de Consumo"] != "não informado" else dadosPdf.NumDias,
                         TaxaColetaLixo      = dadosPdf.tcl,
                         ConservacaoHidrometro   = dadosPdf.hidrometro,
                         ConsumoAtivoNaPonta = dadosPdf.consumoNap,
                         ConsumoAtivoForaDaPonta = dadosPdf.ConsumoAfp,
                         ConsumoTUSDFPonta   = dadosPdf.ConsumoAnp,
                         ConsumoTUSDNPonta   = dadosPdf.ConsumoFop,
-                        MetroCubicos        = dadosPdf.m3,
+                        MetroCubicos        = dadosBiana["Consumo (m³)"] if dadosBiana["Consumo (m³)"] != "não informado" else dadosPdf.m3,
                         Cancelado           = False, 
                         Arquivo             = move, 
-                        Base64File          = self.base.file.imagem_para_base64(move)
+                        Base64File          = img_base_64
                 )
                 
                 self.base.faturasRepository.Insert(fatura)
@@ -149,10 +161,9 @@ class Embasa:
             if self.base.interacoes.elemento_existe(By.XPATH, "//div[contains(text(), 'Matrícula inválida')]", None):
                 self.base.log.processo("Embasa", f"              Matrícula inválida: {list[3]} - CNPJ: {empresa}")
                 continue
-        
-        time.sleep(100)
                   
     def escolherCnpj(self):
+        print("Clicar no botão")
         self.base.interacoes.clicar_elemento(By.CLASS_NAME, "btn-matricula")
         self.base.interacoes.executar_Js_seletor("document.querySelectorAll('.d-none').forEach(el => el.classList.remove('d-none'));")
         time.sleep(3)
@@ -164,3 +175,4 @@ class Embasa:
         time.sleep(2)
         if self.base.interacoes.elemento_existe(By.XPATH, "//p[contains(text(), 'trabalhando')]", None) or self.base.interacoes.elemento_existe(By.XPATH, "//p[contains(text(), 'O fornecimento de água')]", None):
             self.base.interacoes.clicar_elemento(By.XPATH, "//button[contains(text(), 'OK')]")
+        

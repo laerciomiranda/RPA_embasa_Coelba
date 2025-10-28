@@ -100,7 +100,7 @@ class LeitorPdf:
         model = PdfModel(
             MesRef=mes_ano, Vencimento=vencimento, MesEmis=emissao, Valor=valor, 
             LeituraAnt=valor_dataAnt, LeituraAtu=valor_dataAtu, leituraPro=valor_darapro, 
-            NumDias=dias, Energiainj="", consumoNap=valor_consumo, ConsumoFop="", ConsumoAnp=leitAnt, ConsumoAfp=leitAtu)
+            NumDias=dias, m3=valor_consumo, Energiainj="", consumoNap="", ConsumoFop="", ConsumoAnp=leitAnt, ConsumoAfp=leitAtu)
         
         return model
         

@@ -76,9 +76,8 @@ class Interacoes:
             return len(self.driver.find_elements(by, valor)) > 0
         return len(elemento.find_elements(by, valor)) > 0
     
-    def frase_existe(self, texto):
-        xpath = f"//p[contains(text(), '{texto}')]"
-        return len(self.driver.find_elements(By.XPATH, xpath)) > 0
+    def frase_existe(self, by, texto):
+        return len(self.driver.find_elements(by, texto)) > 0
     
     def printHtml(self, elemento):
         print(elemento.get_attribute("outerHTML"))
@@ -86,25 +85,11 @@ class Interacoes:
     def executar_Js_seletor(self, cod):
         return self.driver.execute_script(cod)
 
-    # def esperar_loading_sumir(self, timeout=30):
-    #     try:
-    #         # Espera até o elemento aparecer (caso ainda esteja carregando)
-    #         WebDriverWait(self.driver, timeout).until(
-    #             EC.presence_of_element_located((By.TAG_NAME, "app-spinner"))
-    #         )
-    #         # Depois espera até o elemento sumir
-    #         WebDriverWait(self.driver, timeout).until_not(
-    #             EC.presence_of_element_located((By.TAG_NAME, "app-spinner"))
-    #         )
-    #         print("✅ Loading finalizado.")
-    #     except:
-    #         print("⚠️ O loading não apareceu ou já estava invisível.")
-        
-    def esperar_loading_sumir(self, timeout=1000):
+    def esperar_loading_sumir(self, by, valor, timeout=1000):
         try:
             print("⏳ Aguardando loading desaparecer...")
             WebDriverWait(self.driver, timeout).until(
-                EC.invisibility_of_element_located((By.TAG_NAME, "app-spinner"))
+                EC.invisibility_of_element_located((by, valor))
             )
             print("✅ Loading finalizado.")
         except Exception as e:

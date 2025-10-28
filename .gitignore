@@ -3,4 +3,5 @@
 *.pdf
 # Opcional: ignorar logs dentro de subpastas específicas
 files/Log/
+files/
 tmp/

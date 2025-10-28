@@ -11,8 +11,8 @@ class Faturas:
             if self.conn:
                 cursor = self.conn.cursor()
                 criado = datetime.now()
-                sql = "SELECT Valor FROM Faturas where 1=1 and Cancelado = 0 and CONCAT(Empresa,'-',cliente,'-',MesRef,'-', Vencimento) = ? and MONTH(criado) = ?"
-                valores = (chave, criado.month)
+                sql = "SELECT Valor FROM Faturas where 1=1 and Cancelado = 0 and CONCAT(Empresa,'-',cliente,'-', Vencimento) = ?"
+                valores = (chave)
                 cursor.execute(sql, valores)
                 resultados = cursor.fetchall()
                 if(len(resultados) > 0):

@@ -1,6 +1,6 @@
 import sys
-from src.Apps.Coelba.Robot import Coelba
-from src.Apps.Embasa.Robot import Embasa
+from src.Apps.modules.Coelba import Coelba
+from src.Apps.modules.Embasa import Embasa
 from src.Apps.Saae.Robot import Saae
 from src.services.log import Log
 from src.services.pdf import LeitorPdf
@@ -14,8 +14,8 @@ if __name__ == "__main__":
     pdf = LeitorPdf()
     try:
         print("Iniciando do sistema ...")
-        # coelba.iniciar()
         embasa.iniciar()
+        # embasa.iniciar()
         #saae.iniciar()
          
     except Exception as e:

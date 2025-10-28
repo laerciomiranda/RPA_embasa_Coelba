@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, date
+from selenium.webdriver.common.by import By
 import re
 
 class Funcoes:
@@ -90,4 +91,14 @@ class Funcoes:
         else:
             return "A Vencer"
         
-    
+    def de_para_by(self, value):
+        if value == "By.CLASS_NAME":
+            return By.CLASS_NAME
+        if value == "By.ID":
+            return By.ID
+        if value == "By.XPATH":
+            return By.XPATH
+        if value == "By.TAG_NAME":
+            return By.TAG_NAME
+        
+        return value
