@@ -16,7 +16,7 @@ class Embasa:
         self.bianatech = BianatechService()
             
     def iniciar (self):
-        listEmpresas = self.sqlExecute.select("Empresas", "Empresa = 'EMBASA'")
+        listEmpresas = self.sqlExecute.select("Empresas", "Empresa = 'EMBASA' And Codigo = '03795071001600'")
         for item in listEmpresas:
             self.webDirve =  WebDrive()
             self.base = Base(self.webDirve.driver, "EMBASA")
@@ -49,7 +49,8 @@ class Embasa:
         print("Empresa escolhida")
         time.sleep(3)
         print("Verificando se Empresa Existe!")
-        if self.base.interacoes.elemento_existe(By.XPATH, "//*[@id='js-portlet-_meuUsuario_INSTANCE_qlbt_']/section/div/ul/li/div"):
+        if self.base.interacoes.elemento_existe(By.XPATH, ".//div[contains(text(), 'Não existe matrícula para este')]"):
+            print("Não existe matrícula para este CPF")
             return
         
         self.base.interacoes.clicar_elemento(By.XPATH, "//section/div/ul/div/div[1]/li")
@@ -90,7 +91,7 @@ class Embasa:
                 comptenciaReal = self.base.funcoes.corrigir_mes(referencia.text, list[5])
                 
                 ultimoValSalvo = self.base.faturasRepository.select(f"Embasa-{list[3]}-{Venncimento.text}")
-                if(ultimoValSalvo == total.text.replace("R$&nbsp;","")):
+                if(ultimoValSalvo == total.text.replace("R$ ","")):
                     self.base.log.processo("Embasa",f"           {list[3]} - {referencia.text} - {Venncimento.text} - {valor_servico.text} - {total.text} - {status.text}")
                     continue
                 
