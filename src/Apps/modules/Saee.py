@@ -5,6 +5,7 @@ from src.model.fatura import Fatura
 from src.components.base import Base
 from src.components.webdriver import WebDrive
 from src.repository.sqlExecute import SQL
+from src.services.bianaTech import BianatechService
 
 class Saae:
     def __init__(self):
@@ -13,6 +14,7 @@ class Saae:
         self.sqlExecute = SQL("SAAE")
         self.indexMultFatura = 0
         self.CountMultFatura = 1
+        self.bianatech = BianatechService()
         
     def iniciar (self):
         listEmpresas = self.sqlExecute.select("Empresas", "Empresa = 'SAAE'")
@@ -49,12 +51,16 @@ class Saae:
         qtdFaturas = 1
         search = "Encontrei uma conta"
         while True:
+            print("aqui")
             dados = self.base.interacoes.esperar_elemento(By.XPATH, f"//*[contains(text(), '{search}')]", 20)
             if dados != False:
+                print("aqui 1")
                 if qtdFaturas == 1:
+                    print("aqui 2")
                     repetirCliente = self.umaConta(cliente, empresa)
                     break
                 else:
+                    print("aqui 3")
                     repetirCliente = self.DuasContaMais(cliente, empresa)
                     break
             qtdFaturas +=1
@@ -62,13 +68,17 @@ class Saae:
         return repetirCliente
     
     def umaConta(self, cliente, empresa):
+        print("aqui 4")
         dados = self.base.interacoes.esperar_elemento(By.XPATH, "//*[contains(text(), 'Encontrei uma conta para sua matrícula:')]")
+        print("aqui 5")
         valores = self.base.funcoes.extract_date_and_value(dados.text)
+        print("aqui 6")
         competenciaReal = valores[0]
         valor = valores[1]
+        print("aqui 7")
         vencimento = self.base.funcoes.vencimentoSaae(competenciaReal)
         situacao = self.base.funcoes.comparar_data(vencimento)
-        
+        print("aqui 8")
         ultimoValSalvo = self.base.faturasRepository.select(f"SAAE-{cliente[3]}-{competenciaReal}-{vencimento}")
         if(ultimoValSalvo == valor.replace("R$&nbsp;","")):
             self.base.log.processo("SAAE",f" Já baixada:           {cliente} - {competenciaReal} - {vencimento} - {valor} - {situacao}")   
@@ -117,24 +127,27 @@ class Saae:
         competenciaCorrigida = self.base.funcoes.corrigir_mes(competenciaReal, cliente[5])
         textoPdf = self.base.leitorPdf.lerPdf(move)
         dadosPdf = self.base.leitorPdf.ObterDadosSaae(textoPdf)
+        img_base_64 = self.base.file.imagem_para_base64(move)
+        dadosBiana = self.bianatech.consultar(img_base_64, "Mês/Ano|VALOR A PAGAR (R$)|Vencimento|Data Leitura Anterior|Data Leitura Atual|Próxima Leitura|DIAS|Data Emissão|(M³)|Esgoto|TCL-TAXA DE COLETA DE LIXO|CONSERVACAO DE HIDROMETRO")
+        print(dadosBiana)
         fatura = Fatura( 
                         Empresa             = "SAAE", 
                         Cliente             = cliente[3],
-                        Vencimento          = dadosPdf.Vencimento if dadosPdf.Vencimento is not None else vencimento, 
-                        MesRef              = dadosPdf.MesRef if dadosPdf.MesRef is not None else competenciaCorrigida, 
-                        MesEmis             = dadosPdf.MesEmis if dadosPdf.MesEmis is not None else competenciaReal, 
-                        Valor               = dadosPdf.Valor if dadosPdf.Valor is not None else valor.replace("R$&nbsp;",""), 
-                        Situacao            = self.base.funcoes.comparar_data(dadosPdf.Vencimento) if dadosPdf.Vencimento is not None else situacao, 
+                        Vencimento          = dadosBiana["Vencimento"] if dadosBiana["Vencimento"] != "não informado" else dadosPdf.Vencimento, 
+                        MesRef              = dadosBiana["Mês/Ano"] if dadosBiana["Mês/Ano"] != "não informado" else dadosPdf.MesRef, 
+                        MesEmis             = dadosBiana["Data Emissão"] if dadosBiana["Data Emissão"] != "não informado" else dadosPdf.MesEmis, 
+                        Valor               = dadosBiana["VALOR A PAGAR (R$)"] if dadosBiana["VALOR A PAGAR (R$)"] != "não informado" else dadosPdf.Valor if dadosPdf.Valor is not None else valor.replace("R$&nbsp;",""), 
+                        Situacao            = self.base.funcoes.comparar_data(dadosBiana["Vencimento"]) if dadosBiana["Vencimento"] != "não informado" else self.base.funcoes.comparar_data(dadosPdf.Vencimento) if dadosPdf.Vencimento is not None else status.text,
                         LeituraAnter        = dadosPdf.LeituraAnt,
                         LeituraAtual        = dadosPdf.LeituraAtu,
                         LeituraProxi        = dadosPdf.leituraPro,
-                        NumDias             = dadosPdf.NumDias,
-                        TaxaColetaLixo      = dadosPdf.tcl,
-                        ConservacaoHidrometro   = dadosPdf.hidrometro,
-                        MetroCubicos        = dadosPdf.m3,
+                        NumDias             = dadosBiana["Dias de Consumo"] if dadosBiana["Dias de Consumo"] != "não informado" else dadosPdf.NumDias,
+                        TaxaColetaLixo      = dadosBiana["TCL-TAXA DE COLETA DE LIXO"] if dadosBiana["TCL-TAXA DE COLETA DE LIXO"] != "não informado" else dadosPdf.tcl,
+                        ConservacaoHidrometro   = dadosBiana["CONSERVACAO DE HIDROMETRO"] if dadosBiana["CONSERVACAO DE HIDROMETRO"] != "não informado" else dadosPdf.hidrometro,
+                        MetroCubicos        = dadosBiana["Consumo (m³)"] if dadosBiana["Consumo (m³)"] != "não informado" else dadosPdf.m3,
                         Cancelado           = False, 
                         Arquivo             = move, 
-                        Base64File          = self.base.file.imagem_para_base64(move)
+                        Base64File          = img_base_64
                 )
         
         self.base.faturasRepository.Insert(fatura)

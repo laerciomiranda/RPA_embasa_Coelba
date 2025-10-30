@@ -60,6 +60,8 @@ class Embasa:
         time.sleep(1)
         for list in listClientes:
             self.base.log.processo("Embasa",f"       -> Iniciando Matrícula : {list[3]}")
+            time.sleep(1)
+            self.verificarAviso()
             self.base.interacoes.preencher_campo(By.XPATH, "//*[@id='input-matricula']", str(list[3]).strip())
             self.base.interacoes.clicar_elemento(By.CLASS_NAME, "btn-pesquisar-conta")
             while True:
@@ -119,7 +121,7 @@ class Embasa:
                 dadosPdf = self.base.leitorPdf.ObterDadosEmbasa(textoPdf)
                 img_base_64 = self.base.file.imagem_para_base64(move)
                 
-                dadosBiana = self.bianatech.consultar(img_base_64, "Mês/Ano|VALOR A PAGAR (R$)|Vencimento|Data Leitura Anterior|Data Leitura Atual|Próxima Leitura|Dias de Consumo|Data Emissão|Consumo (m³)|")
+                dadosBiana = self.bianatech.consultar(img_base_64, "Mês/Ano|VALOR A PAGAR (R$)|Vencimento|Data Leitura Anterior|Data Leitura Atual|Próxima Leitura|Dias de Consumo|Data Emissão|Consumo (m³)|Esgoto|")
                 fatura = Fatura( 
                         Empresa             = "Embasa", 
                         Cliente             = list[3],
@@ -133,7 +135,7 @@ class Embasa:
                         LeituraProxi        = dadosPdf.leituraPro,
                         NumDias             = dadosBiana["Dias de Consumo"] if dadosBiana["Dias de Consumo"] != "não informado" else dadosPdf.NumDias,
                         TaxaColetaLixo      = dadosPdf.tcl,
-                        ConservacaoHidrometro   = dadosPdf.hidrometro,
+                        ConservacaoHidrometro   = dadosBiana["Esgoto"] if dadosBiana["Esgoto"] != "não informado" else dadosPdf.hidrometro,
                         ConsumoAtivoNaPonta = dadosPdf.consumoNap,
                         ConsumoAtivoForaDaPonta = dadosPdf.ConsumoAfp,
                         ConsumoTUSDFPonta   = dadosPdf.ConsumoAnp,
